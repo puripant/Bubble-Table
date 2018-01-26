@@ -16,7 +16,10 @@ div.tooltip {
   border: 0px;
   /* border-radius: 5px; */
 }
-
 div.tooltip table {
   width: 100%;
+  table-layout: fixed;
+  overflow-x: hidden;
+  overflow-y: auto;
+  text-overflow: ellipsis;
 }
