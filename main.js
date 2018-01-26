@@ -129,6 +129,7 @@ d3.json("all.json", function(error, data) {
         groupId: index,
         x: w / (groupNum + 1) * (index + 1),
         y: h / 2,
+        highlight: false
       };
       nodes.push(node);
       groups[index].push(node);
@@ -142,7 +143,7 @@ d3.json("all.json", function(error, data) {
     row.role = stringToArray(row.role);
     row.schools = stringToArray(row.schools);
     row.strategy = stringToArray(row.strategy);
-    row.types = stringToArray(row.strategy);
+    row.type = stringToArray(row.type);
     data[index] = row;
   });
   addAllToNodes(data, 0);
@@ -158,6 +159,24 @@ d3.json("all.json", function(error, data) {
     return n.groupId != null ? fill(n.groupId) : "lightgray";
   };
 
+  function highlightRelated(d, field, fieldId) {
+    if (d.text[field]) {
+      d.text[field].forEach(function(t) {
+        var count = 0;
+        for (var j = 0; j < nodes.length; j++) {
+          if (nodes[j].groupId === fieldId) {
+            if (count === t) {
+              nodes[j].highlight = true;
+              break;
+            } else {
+              count++;
+            }
+          }
+        }
+      });
+    }
+  }
+
   var node = vis.selectAll(".node")
       .data(nodes)
     .enter().append("path")
@@ -167,6 +186,8 @@ d3.json("all.json", function(error, data) {
         .size(150)
         .type(function(d) { return d3.symbols[d.groupId % d3.symbols.length]; }))
       .style("fill", nodeFill)
+      .style("stroke", function() { return d3.rgb(nodeFill).darker(2); })
+      .style("stroke-width", function(d) { return d.highlight? 1.5:0 })
       .on("mouseover", function(d) {
           div.transition()
             .duration(200)
@@ -186,8 +207,15 @@ d3.json("all.json", function(error, data) {
            // .style("left", d3.event.pageX + "px")
            // .style("top", d3.event.pageY + "px");
         })
-      .on("click", function(d) {
+      .on("click", function(d, i) {
+          for (var j = 0; j < nodes.length; j++) {
+            nodes[j].highlight = false;
+          }
+          nodes[i].highlight = true;
 
+          //find connections
+          highlightRelated(d, "type", 1);
+          highlightRelated(d, "role", 2);
         })
       .call(d3.drag()
         .subject(dragsubject)
@@ -254,7 +282,8 @@ d3.json("all.json", function(error, data) {
       .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
       // .attr("cx", function(d) { return d.x; })
       // .attr("cy", function(d) { return d.y; })
-      .style("fill", nodeFill);
+      .style("fill", nodeFill)
+      .style("stroke-width", function(d) { return d.highlight? 1.5:0 });
 
     group.attr("d", groupPath);
   });
