@@ -28,37 +28,37 @@ groups.init = function() {
   };
 }
 
-groups.snap = function(d) {
-  function change(d, to) {
-    if (d.groupId != null) {
-      var oldGroup = groups[d.groupId];
-      var index = oldGroup.indexOf(d);
-      if (index >= 0) {
-        oldGroup.splice(index, 1);
-      }
-    }
-
-    if (to == null) {
-      d.groupId = null;
-    } else {
-      d.groupId = to.groupId;
-      to.push(d);
-    }
-  }
-
-  groups.forEach(function(g) {
-    var distance = Math.sqrt(Math.pow(d.x - g.x, 2) + Math.pow(d.y - g.y, 2));
-    if (distance < groups.r) {
-      if (d.groupId != g.groupId) {
-        change(d, g);
-      }
-    } else {
-      if (d.groupId == g.groupId) {
-        change(d, null)
-      }
-    }
-  });
-}
+// groups.snap = function(d) {
+//   function change(d, to) {
+//     if (d.groupId != null) {
+//       var oldGroup = groups[d.groupId];
+//       var index = oldGroup.indexOf(d);
+//       if (index >= 0) {
+//         oldGroup.splice(index, 1);
+//       }
+//     }
+//
+//     if (to == null) {
+//       d.groupId = null;
+//     } else {
+//       d.groupId = to.groupId;
+//       to.push(d);
+//     }
+//   }
+//
+//   groups.forEach(function(g) {
+//     var distance = Math.sqrt(Math.pow(d.x - g.x, 2) + Math.pow(d.y - g.y, 2));
+//     if (distance < groups.r) {
+//       if (d.groupId != g.groupId) {
+//         change(d, g);
+//       }
+//     } else {
+//       if (d.groupId == g.groupId) {
+//         change(d, null)
+//       }
+//     }
+//   });
+// }
 
 groups.delta = function(d) {
   function massCenter(g) {
@@ -122,17 +122,18 @@ d3.json("all.json", function(error, data) {
   groups.init();
   var nodes = [];
 
-  function addAllToNodes(array, index) {
-    array.forEach(function(text) {
+  function addAllToNodes(array, groupId) {
+    array.forEach(function(text, index) {
       node = {
         text: text,
-        groupId: index,
-        x: w / (groupNum + 1) * (index + 1),
+        groupId: groupId,
+        groupIndex: index,
+        x: w / (groupNum + 1) * (groupId + 1),
         y: h / 2,
         highlight: false
       };
       nodes.push(node);
-      groups[index].push(node);
+      groups[groupId].push(node);
     });
   }
   data.forEach(function(row, index) {
@@ -167,6 +168,8 @@ d3.json("all.json", function(error, data) {
           if (nodes[j].groupId === fieldId) {
             if (count === t) {
               nodes[j].highlight = true;
+              groupj = groups[nodes[j].groupId];
+              groupj.splice(groupj.indexOf(nodes[j]), 1);
               break;
             } else {
               count++;
@@ -209,13 +212,22 @@ d3.json("all.json", function(error, data) {
         })
       .on("click", function(d, i) {
           for (var j = 0; j < nodes.length; j++) {
+            if (nodes[j].highlight) {
+              groups[nodes[j].groupId].push(nodes[j]);
+            }
             nodes[j].highlight = false;
           }
           nodes[i].highlight = true;
+          groupi = groups[nodes[i].groupId];
+          groupi.splice(groupi.indexOf(nodes[i]), 1);
 
           //find connections
           highlightRelated(d, "type", 1);
           highlightRelated(d, "role", 2);
+
+          simulation.force("y", d3.forceY(function(d) { return groups[d.groupId].y / (d.highlight? 2:1); } ).strength(0.2));
+          simulation.alpha(0.5);
+          simulation.restart();
         })
       .call(d3.drag()
         .subject(dragsubject)
@@ -266,10 +278,10 @@ d3.json("all.json", function(error, data) {
 
   //simulation
   simulation = d3.forceSimulation(nodes)
-    .force("charge", d3.forceManyBody().strength(2))
+    // .force("charge", d3.forceManyBody().strength(5))
     .force("x", d3.forceX(function(d) { return groups[d.groupId].x; } ).strength(0.2))
-    .force("y", d3.forceY(function(d) { return groups[d.groupId].y; } ).strength(0.2))
-    .force("collide", d3.forceCollide(7));
+    .force("y", d3.forceY(function(d) { return groups[d.groupId].y / (d.highlight? 2:1); } ).strength(0.2))
+    .force("collide", d3.forceCollide(8).iterations(3).strength(0.6));
 
   simulation.on("tick", function(e) {
     nodes.forEach(function(o) {
