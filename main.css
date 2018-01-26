@@ -1,0 +1,22 @@
+body {
+  margin: 0;
+
+  font-family: 'Athiti', sans-serif;
+  font-size: 14px;
+}
+
+div.tooltip {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 200px;
+  height: 100%;
+  padding: 10px;
+  background: whitesmoke;
+  border: 0px;
+  /* border-radius: 5px; */
+}
+
+div.tooltip table {
+  width: 100%;
+}
