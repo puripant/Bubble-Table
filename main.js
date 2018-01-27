@@ -152,9 +152,12 @@ d3.json("all.json", function(error, data) {
   addAllToNodes(data, 0);
   addAllToNodes(types, 1);
   addAllToNodes(roles, 2);
-
+  addAllToNodes(strategies, 3);
+  addAllToNodes(results, 4);
   addAllToNodes(people, 5);
   addAllToNodes(areas, 6);
+
+  addAllToNodes(relations, 8);
 
   //main vis + nodes
   var vis = d3.select("#chart").append("svg")
@@ -229,9 +232,12 @@ d3.json("all.json", function(error, data) {
           //find connections
           highlightRelated(d, "type", 1, true);
           highlightRelated(d, "role", 2, true);
-
+          highlightRelated(d, "strategy", 3, true);
+          highlightRelated(d, "result", 4, true);
           highlightRelated(d, "person", 5, true);
           highlightRelated(d, "area", 6, true);
+
+          highlightRelated(d, "relation", 8, true);
 
           simulation.force("y", d3.forceY(function(d) { return groups[d.groupId].y / (d.highlight? 2:1); } ).strength(0.2));
           simulation.alpha(0.5);
