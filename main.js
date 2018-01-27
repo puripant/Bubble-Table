@@ -137,19 +137,24 @@ d3.json("all.json", function(error, data) {
     });
   }
   data.forEach(function(row, index) {
-    row.area = stringToArray(row.area);
-    row.person = stringToArray(row.person);
-    row.relations = stringToArray(row.relations);
-    row.result = stringToArray(row.result);
-    row.role = stringToArray(row.role);
-    row.schools = stringToArray(row.schools);
-    row.strategy = stringToArray(row.strategy);
     row.type = stringToArray(row.type);
+    row.role = stringToArray(row.role);
+
+    row.strategy = stringToArray(row.strategy);
+    row.result = stringToArray(row.result);
+    row.person = stringToArray(row.person);
+    row.area = stringToArray(row.area);
+    row.school = stringToArray(row.school);
+    row.relation = stringToArray(row.relation);
+
     data[index] = row;
   });
   addAllToNodes(data, 0);
   addAllToNodes(types, 1);
   addAllToNodes(roles, 2);
+
+  addAllToNodes(people, 5);
+  addAllToNodes(areas, 6);
 
   //main vis + nodes
   var vis = d3.select("#chart").append("svg")
@@ -160,13 +165,13 @@ d3.json("all.json", function(error, data) {
     return n.groupId != null ? fill(n.groupId) : "lightgray";
   };
 
-  function highlightRelated(d, field, fieldId) {
+  function highlightRelated(d, field, fieldId, isArrayIndex) {
     if (d.text[field]) {
       d.text[field].forEach(function(t) {
         var count = 0;
         for (var j = 0; j < nodes.length; j++) {
           if (nodes[j].groupId === fieldId) {
-            if (count === t) {
+            if (count === t - (isArrayIndex? 1:0)) {
               nodes[j].highlight = true;
               groupj = groups[nodes[j].groupId];
               groupj.splice(groupj.indexOf(nodes[j]), 1);
@@ -222,8 +227,11 @@ d3.json("all.json", function(error, data) {
           groupi.splice(groupi.indexOf(nodes[i]), 1);
 
           //find connections
-          highlightRelated(d, "type", 1);
-          highlightRelated(d, "role", 2);
+          highlightRelated(d, "type", 1, true);
+          highlightRelated(d, "role", 2, true);
+
+          highlightRelated(d, "person", 5, true);
+          highlightRelated(d, "area", 6, true);
 
           simulation.force("y", d3.forceY(function(d) { return groups[d.groupId].y / (d.highlight? 2:1); } ).strength(0.2));
           simulation.alpha(0.5);
