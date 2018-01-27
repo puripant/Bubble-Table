@@ -261,13 +261,12 @@ d3.json("all.json", function(error, data) {
   //   return "M" + d3.polygonHull(d.map(function(e) { return [e.x, e.y]; })).join("L") + "Z";
   // };
   var groupPath = d3.line()
-    .x(function(e) { return e.x; })
-    .y(function(e) { return e.y; })
-    .curve(d3.curveCardinalClosed); //curveCatmullRomClosed
+    .x(function(e) { return e[0]; })
+    .y(function(e) { return e[1]; })
+    .curve(d3.curveCatmullRomClosed); //curveCatmullRomClosed
 
   var group = vis.selectAll(".group")
       .data(groups)
-      .attr("d", groupPath)
     .enter().insert("path", ".node")
       .attr("class", "group")
       .style("fill", nodeFill)
@@ -297,6 +296,9 @@ d3.json("all.json", function(error, data) {
       .style("fill", nodeFill)
       .style("stroke-width", function(d) { return d.highlight? 1.5:0 });
 
-    group.attr("d", groupPath);
+    group.attr("d", function(d) {
+      hull = d3.polygonHull(d.map(function(e) { return [e.x, e.y]; }));
+      return groupPath(hull);
+    });
   });
 });
