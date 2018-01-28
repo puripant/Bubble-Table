@@ -28,38 +28,6 @@ groups.init = function() {
   };
 }
 
-// groups.snap = function(d) {
-//   function change(d, to) {
-//     if (d.groupId != null) {
-//       var oldGroup = groups[d.groupId];
-//       var index = oldGroup.indexOf(d);
-//       if (index >= 0) {
-//         oldGroup.splice(index, 1);
-//       }
-//     }
-//
-//     if (to == null) {
-//       d.groupId = null;
-//     } else {
-//       d.groupId = to.groupId;
-//       to.push(d);
-//     }
-//   }
-//
-//   groups.forEach(function(g) {
-//     var distance = Math.sqrt(Math.pow(d.x - g.x, 2) + Math.pow(d.y - g.y, 2));
-//     if (distance < groups.r) {
-//       if (d.groupId != g.groupId) {
-//         change(d, g);
-//       }
-//     } else {
-//       if (d.groupId == g.groupId) {
-//         change(d, null)
-//       }
-//     }
-//   });
-// }
-
 groups.delta = function(d) {
   function massCenter(g) {
     var x = 0,
@@ -102,11 +70,11 @@ function dragended() {
   d3.event.subject.fy = null;
 }
 
-function stringToArray(s) {
+function stringToArray(s, toNumbers) {
   if(Array.isArray(s)) {
     return s;
   } else if(isNaN(s)) {
-    return s.split(",").map(function(a) { return +a.trim(); });
+    return s.split(",").map(function(a) { return toNumbers? +a.trim():a.trim(); });
   } else {
     return [s];
   }
@@ -136,28 +104,37 @@ d3.json("all.json", function(error, data) {
       groups[groupId].push(node);
     });
   }
+  var usedStrategyIndices = [];
+  var usedResultIndices = [];
+  var usedSchoolIndices = [];
+  var usedRelationIndices = [];
   data.forEach(function(row, index) {
-    row.type = stringToArray(row.type);
-    row.role = stringToArray(row.role);
+    row.type = stringToArray(row.type, true);
+    row.role = stringToArray(row.role, true);
 
-    row.strategy = stringToArray(row.strategy);
-    row.result = stringToArray(row.result);
-    row.person = stringToArray(row.person);
-    row.area = stringToArray(row.area);
-    row.school = stringToArray(row.school);
-    row.relation = stringToArray(row.relation);
+    row.strategy = stringToArray(row.strategy, true);
+    row.result = stringToArray(row.result, true);
+    row.person = stringToArray(row.person, true);
+    row.area = stringToArray(row.area, true);
+    row.school = stringToArray(row.school, false);
+    row.relation = stringToArray(row.relation, true);
+
+    row.strategy.forEach(function(x) { usedStrategyIndices.push(x); });
+    row.result.forEach(function(x) { usedResultIndices.push(x); });
+    row.school.forEach(function(x) { usedSchoolIndices.push(x); });
+    row.relation.forEach(function(x) { usedRelationIndices.push(x); });
 
     data[index] = row;
   });
   addAllToNodes(data, 0);
   addAllToNodes(types, 1);
   addAllToNodes(roles, 2);
-  addAllToNodes(strategies, 3);
-  addAllToNodes(results, 4);
+  addAllToNodes(strategies.filter(function(d, i) { return usedStrategyIndices.indexOf(i) >= 0; }), 3);
+  addAllToNodes(results.filter(function(d, i) { return usedResultIndices.indexOf(i) >= 0; }), 4);
   addAllToNodes(people, 5);
   addAllToNodes(areas, 6);
-
-  addAllToNodes(relations, 8);
+  addAllToNodes(Object.keys(schools).filter(function(d) { return usedSchoolIndices.indexOf(d) >= 0; }), 7);
+  addAllToNodes(relations.filter(function(d, i) { return usedRelationIndices.indexOf(i) >= 0; }), 8);
 
   //main vis + nodes
   var vis = d3.select("#chart").append("svg")
@@ -169,18 +146,29 @@ d3.json("all.json", function(error, data) {
   };
 
   function highlightRelated(d, field, fieldId, isArrayIndex) {
-    if (d.text[field]) {
+    if (d.text[field] && d.text[field][0] !== null) {
       d.text[field].forEach(function(t) {
-        var count = 0;
-        for (var j = 0; j < nodes.length; j++) {
-          if (nodes[j].groupId === fieldId) {
-            if (count === t - (isArrayIndex? 1:0)) {
+        if(isArrayIndex) {
+          var count = 0;
+          for (var j = 0; j < nodes.length; j++) {
+            if (nodes[j].groupId === fieldId) {
+              if (count === t - 1) {
+                nodes[j].highlight = true;
+                groupj = groups[nodes[j].groupId];
+                groupj.splice(groupj.indexOf(nodes[j]), 1);
+                break;
+              } else {
+                count++;
+              }
+            }
+          }
+        } else {
+          for (var j = 0; j < nodes.length; j++) {
+            if (nodes[j].groupId === fieldId && nodes[j].text === t) {
               nodes[j].highlight = true;
               groupj = groups[nodes[j].groupId];
               groupj.splice(groupj.indexOf(nodes[j]), 1);
               break;
-            } else {
-              count++;
             }
           }
         }
@@ -236,7 +224,7 @@ d3.json("all.json", function(error, data) {
           highlightRelated(d, "result", 4, true);
           highlightRelated(d, "person", 5, true);
           highlightRelated(d, "area", 6, true);
-
+          highlightRelated(d, "school", 7, false);
           highlightRelated(d, "relation", 8, true);
 
           simulation.force("y", d3.forceY(function(d) { return groups[d.groupId].y / (d.highlight? 2:1); } ).strength(0.2));
@@ -248,22 +236,6 @@ d3.json("all.json", function(error, data) {
         .on("start", dragstarted)
         .on("drag", dragged)
         .on("end", dragended));
-    // .enter().append("circle")
-    //   .attr("class", "node")
-    //   .attr("cx", function(d) { return d.x; })
-    //   .attr("cy", function(d) { return d.y; })
-    //   .attr("r", 5)
-    //   .style("fill", nodeFill)
-    //   // .style("stroke", function(d, i) {
-    //   //   return d3.rgb(nodeFill).darker(2);
-    //   // })
-    //   // .style("stroke-width", 1.5)
-    //   // .on("mousemove", groups.snap)
-    //   .call(d3.drag()
-    //     .subject(dragsubject)
-    //     .on("start", dragstarted)
-    //     .on("drag", dragged)
-    //     .on("end", dragended));
 
   vis.style("opacity", 1e-6)
     .transition()
@@ -271,9 +243,6 @@ d3.json("all.json", function(error, data) {
     .style("opacity", 1);
 
   //clusters
-  // var groupPath = function(d) {
-  //   return "M" + d3.polygonHull(d.map(function(e) { return [e.x, e.y]; })).join("L") + "Z";
-  // };
   var groupPath = d3.line()
     .x(function(e) { return e[0]; })
     .y(function(e) { return e[1]; })
@@ -305,8 +274,6 @@ d3.json("all.json", function(error, data) {
 
     node
       .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
-      // .attr("cx", function(d) { return d.x; })
-      // .attr("cy", function(d) { return d.y; })
       .style("fill", nodeFill)
       .style("stroke-width", function(d) { return d.highlight? 1.5:0 });
 
